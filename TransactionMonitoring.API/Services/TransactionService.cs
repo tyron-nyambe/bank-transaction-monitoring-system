@@ -22,34 +22,54 @@ public class TransactionService
         };
     }
 
+    private string GetRiskLevel(int score)
+    {
+        if (score >= 70) return "High";
+        if (score >= 30) return "Medium";
+        return "Low";
+    }
+
     public async Task<Transaction> CreateTransactionAsync(Transaction transaction)
     {
         //Save transaction first
         _context.Transactions.Add(transaction);
         await _context.SaveChangesAsync();
 
+        int totalRiskScore = 0;
+        var triggeredRules = new List<string>();
+
         //Get transaction history for this account
         var history = _context.Transactions
         .Where(t=> t.AccountId == transaction.AccountId )
         .ToList();
 
-        //Apply rules
         foreach (var rule in _rules)
         {
-            if (rule.IsMatch(transaction, history))
-            {
-                var alert = new Alert
-                {
-                    TransactionId = transaction.Id,
-                    RuleName = rule.RuleName,
-                    CreatedAt = DateTime.UtcNow
-                };
+            var score = rule.GetRiskScore(transaction, history);
 
-                _context.Alerts.Add(alert);
+            if (score > 0)
+            {
+                totalRiskScore += score;
+                triggeredRules.Add(rule.RuleName);
             }
         }
 
+        //Apply rules
+       if (totalRiskScore > 0)
+        {
+        var alert = new Alert
+        {
+            TransactionId = transaction.Id,
+            RuleName = string.Join(", ", triggeredRules),
+            CreatedAt = DateTime.UtcNow,
+            RiskScore = totalRiskScore,
+            RiskLevel = GetRiskLevel(totalRiskScore)
+        };
+
+        _context.Alerts.Add(alert);
+
         await _context.SaveChangesAsync();
+    }
 
         return transaction;
     }

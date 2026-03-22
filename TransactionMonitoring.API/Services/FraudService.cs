@@ -28,17 +28,17 @@ public class FraudService
 
         foreach (var rule in _rules)
         {
-            if (rule.IsMatch(tx, history))
-            {
-                var alert = new Alert
-                {
-                    TransactionId = tx.Id,
-                    RuleName = rule.RuleName,
-                    CreatedAt = DateTime.UtcNow
-                };
+            // if (rule.IsMatch(tx, history))
+            // {
+            //     var alert = new Alert
+            //     {
+            //         TransactionId = tx.Id,
+            //         RuleName = rule.RuleName,
+            //         CreatedAt = DateTime.UtcNow
+            //     };
 
-                _context.Alerts.Add(alert);
-            }
+            //     _context.Alerts.Add(alert);
+            // }
         }
 
         await _context.SaveChangesAsync();

@@ -6,8 +6,11 @@ public class LargeTransactionRule : IFraudRule
 {
     public string RuleName => "Large Transaction";
 
-    public bool IsMatch(Transaction transaction, List<Transaction> history)
-    {
-        return transaction.Amount > 50000;
-    }
+    public int GetRiskScore(Transaction transaction, List<Transaction> history)
+{
+    if (transaction.Amount > 50000)
+        return 80;
+
+    return 0;
+}
 }
