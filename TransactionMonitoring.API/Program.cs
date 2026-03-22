@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using TransactionMonitoring.API.Data;
+using TransactionMonitoring.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
-
+builder.Services.AddScoped<TransactionService>(); //AddScoped is create one instance per request
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
