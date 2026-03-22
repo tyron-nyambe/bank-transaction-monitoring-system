@@ -27,6 +27,16 @@ public class AlertsController : ControllerBase
     [HttpGet("by-account/{accountId}")]
     public async Task<IActionResult> GetAlertsByAccount(string accountId)
     {
+        //Check if account exists
+        var accountExists = await _context.Transactions
+        .AnyAsync(t => t.AccountId ==accountId);
+
+        if (!accountExists)
+        {
+            return NotFound(new {message = $"Account '{accountId}' not found"});
+        }
+
+        //Get alerts for that account
         var alerts = await _context.Alerts
             .Include(a => a.Transaction)
             .Where(a => a.Transaction.AccountId == accountId)
@@ -42,6 +52,11 @@ public class AlertsController : ControllerBase
         var alerts = await _context.Alerts
             .Where(a => a.RuleName == ruleName)
             .ToListAsync();
+
+        if(!alerts.Any())
+        {
+            return NotFound(new {message = $"No alerts found for rule '{ruleName}'"});
+        }
 
         return Ok(alerts);
     }
