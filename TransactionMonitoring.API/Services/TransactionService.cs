@@ -16,7 +16,9 @@ public class TransactionService
         //Registering rules
         _rules = new List<IFraudRule>
         {
-            new LargeTransactionRule()
+            new LargeTransactionRule(),
+            new RapidTransactionsRule(),
+            new LocationMismatchRule()
         };
     }
 
