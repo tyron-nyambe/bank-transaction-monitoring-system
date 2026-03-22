@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using TransactionMonitoring.API.Data;
 using TransactionMonitoring.API.Models;
+using TransactionMonitoring.API.Services;
 
 namespace TransactionMonitoring.API.Controllers;
 
@@ -8,20 +9,19 @@ namespace TransactionMonitoring.API.Controllers;
 [Route("api/[controller]")]
 public class TransactionsController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly TransactionService _transactionService;
 
-    public TransactionsController(AppDbContext context) //Dependency injection here giving us a working database connection
+    public TransactionsController(TransactionService transactionService) //Dependency injection here giving us a working database connection
     {
-        _context = context;
+        _transactionService = transactionService;
     }
 
     [HttpPost]
    [HttpPost]
     public async Task<IActionResult> CreateTransaction([FromBody] Transaction transaction)
     {
-        _context.Transactions.Add(transaction); //adds transaction to EF
-        await _context.SaveChangesAsync(); //Saves it into databse
+        var result = await _transactionService.CreateTransactionAsync(transaction);
 
-        return Ok(transaction);
+        return Ok(result);
     }
 }
