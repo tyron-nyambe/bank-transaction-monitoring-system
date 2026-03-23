@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fraud Monitoring Dashboard</title>
+    <style>
+        body { font-family: Arial; margin: 20px; }
+        h1 { color: #333; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; }
+        th { background-color: #f4f4f4; }
+
+        .high { color: red; font-weight: bold; }
+        .medium { color: orange; font-weight: bold; }
+        .low { color: green; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<h1>🚨 Fraud Monitoring Dashboard</h1>
+
+<input type="text" id="accountId" placeholder="Enter Account ID" />
+<button onclick="loadAlerts()">Search</button>
+
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Account</th>
+            <th>Rule</th>
+            <th>Risk Score</th>
+            <th>Risk Level</th>
+            <th>Date</th>
+        </tr>
+    </thead>
+    <tbody id="alertsTable"></tbody>
+</table>
+
+<script>
+async function loadAlerts() {
+    const accountId = document.getElementById("accountId").value;
+
+    // ⚠️ Make sure protocol + port match your API
+    let url = "http://localhost:5245/api/alerts";
+    if (accountId) {
+        url = `http://localhost:5245/api/alerts/by-account/${accountId}`;
+    }
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            alert(`Error: ${response.status} ${response.statusText}`);
+            return;
+        }
+
+        const data = await response.json();
+
+        const table = document.getElementById("alertsTable");
+        table.innerHTML = "";
+
+        if (data.length === 0) {
+            table.innerHTML = "<tr><td colspan='6'>No alerts found</td></tr>";
+            return;
+        }
+
+        data.forEach(alert => {
+            const row = `
+                <tr>
+                    <td>${alert.id}</td>
+                    <td>${alert.transaction?.accountId ?? "N/A"}</td>
+                    <td>${alert.ruleName}</td>
+                    <td>${alert.riskScore}</td>
+                    <td class="${(alert.riskLevel || '').toLowerCase()}">${alert.riskLevel ?? "N/A"}</td>
+                    <td>${alert.createdAt}</td>
+                </tr>
+            `;
+            table.innerHTML += row;
+        });
+
+    } catch (err) {
+        console.error(err);
+        alert("Failed to connect to API. Check console for details.");
+    }
+}
+
+// Load all alerts on page load
+loadAlerts();
+</script>
+
+</body>
+</html>
