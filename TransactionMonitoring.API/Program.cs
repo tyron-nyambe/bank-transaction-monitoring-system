@@ -4,24 +4,37 @@ using TransactionMonitoring.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ----------------------
+// Services registration
+// ----------------------
 builder.Services.AddControllers();
-builder.Services.AddScoped<TransactionService>(); //AddScoped is create one instance per request
+builder.Services.AddScoped<TransactionService>(); // one instance per request
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// ✅ MUST be MySQL (not UseSqlServer)
+//MySQL DB connection
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
         ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))
     ));
 
+//Enable CORS for frontend dashboard
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll",
+        policy => policy.AllowAnyOrigin()
+                        .AllowAnyMethod()
+                        .AllowAnyHeader());
+});
+
 var app = builder.Build();
-//Testing DB connection
+
+// ----------------------
+//Test DB connection (optional)
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
     try
     {
         db.Database.OpenConnection();
@@ -35,6 +48,9 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+// ----------------------
+// Middleware / pipeline
+// ----------------------
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -43,11 +59,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseAuthorization();
-
-app.MapControllers();
-
-//Handle exceptions globally
+//Global exception handler
 app.UseExceptionHandler(errorApp =>
 {
     errorApp.Run(async context =>
@@ -63,5 +75,12 @@ app.UseExceptionHandler(errorApp =>
         await context.Response.WriteAsJsonAsync(response);
     });
 });
+
+// Must come **after exception handler**
+app.UseCors("AllowAll");
+
+app.UseAuthorization();
+
+app.MapControllers();
 
 app.Run();
