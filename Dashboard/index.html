@@ -89,7 +89,7 @@ async function loadAlerts() {
         const data = await response.json();
 
         renderTable(data);
-        renderCharts(data);
+        renderCharts(accountId);
 
     } catch (err) {
         console.error(err);
@@ -121,40 +121,36 @@ function renderTable(data) {
     });
 }
 
-function renderCharts(data) {
+async function renderCharts(accountId) {
 
-    // 🟢 Risk Distribution
-    const riskCounts = { High: 0, Medium: 0, Low: 0 };
+    // 🔵 Risk Distribution
+    let riskUrl = `http://localhost:5245/api/analytics/risk-distribution`;
+    if (accountId) riskUrl += `?accountId=${accountId}`;
 
-    data.forEach(a => {
-        if (a.riskLevel) {
-            riskCounts[a.riskLevel]++;
-        }
-    });
+    const riskResponse = await fetch(riskUrl);
+    const riskDataApi = await riskResponse.json();
 
-    const riskData = {
-        labels: ["High", "Medium", "Low"],
-        datasets: [{
-            data: [riskCounts.High, riskCounts.Medium, riskCounts.Low]
-        }]
-    };
+    const labels = riskDataApi.map(x => x.riskLevel);
+    const counts = riskDataApi.map(x => x.count);
 
     if (riskChart) riskChart.destroy();
     riskChart = new Chart(document.getElementById("riskChart"), {
         type: "pie",
-        data: riskData
+        data: {
+            labels: labels,
+            datasets: [{ data: counts }]
+        }
     });
 
-    // 🔵 Alerts Over Time
-    const grouped = {};
+    // 📈 Alerts per day
+    let timeUrl = `http://localhost:5245/api/analytics/alerts-per-day`;
+    if (accountId) timeUrl += `?accountId=${accountId}`;
 
-    data.forEach(a => {
-        const date = new Date(a.createdAt).toLocaleDateString();
-        grouped[date] = (grouped[date] || 0) + 1;
-    });
+    const timeResponse = await fetch(timeUrl);
+    const timeDataApi = await timeResponse.json();
 
-    const dates = Object.keys(grouped);
-    const counts = Object.values(grouped);
+    const dates = timeDataApi.map(x => x.date);
+    const counts2 = timeDataApi.map(x => x.count);
 
     if (timeChart) timeChart.destroy();
     timeChart = new Chart(document.getElementById("timeChart"), {
@@ -163,7 +159,7 @@ function renderCharts(data) {
             labels: dates,
             datasets: [{
                 label: "Alerts",
-                data: counts,
+                data: counts2,
                 fill: false
             }]
         }

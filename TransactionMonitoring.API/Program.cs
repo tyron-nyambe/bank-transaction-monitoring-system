@@ -9,6 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 // ----------------------
 builder.Services.AddControllers();
 builder.Services.AddScoped<TransactionService>(); // one instance per request
+builder.Services.AddScoped<AnalyticsService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
