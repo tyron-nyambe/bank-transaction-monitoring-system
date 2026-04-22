@@ -13,4 +13,12 @@ public class AppDbContext : DbContext
     //These represent tables in the database.
     public DbSet<Transaction> Transactions { get; set; } //Create table Transactions based on the Transactions model.
     public DbSet<Alert> Alerts { get; set; } //Create table Alerts based on the Alerts model
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.Entity<Alert>()
+        .HasOne(a => a.Transaction)
+        .WithMany()
+        .HasForeignKey(a => a.TransactionId);
+}
 }

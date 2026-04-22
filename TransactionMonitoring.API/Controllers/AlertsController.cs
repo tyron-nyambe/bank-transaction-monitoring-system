@@ -15,49 +15,76 @@ public class AlertsController : ControllerBase
         _context = context;
     }
 
-    // Get all alerts
+    // ✅ Get all alerts
     [HttpGet]
-    public async Task<IActionResult> GetAllAlerts()
-    {
-        var alerts = await _context.Alerts.ToListAsync();
-        return Ok(alerts);
-    }
-
-    // Get alerts by account
-    [HttpGet("by-account/{accountId}")]
-    public async Task<IActionResult> GetAlertsByAccount(string accountId)
-    {
-        //Check if account exists
-        var accountExists = await _context.Transactions
-        .AnyAsync(t => t.AccountId ==accountId);
-
-        if (!accountExists)
+[HttpGet]
+public async Task<IActionResult> GetAllAlerts()
+{
+    var alerts = await _context.Alerts
+        .Include(a => a.Transaction)
+        .Select(a => new
         {
-            return NotFound(new {message = $"Account '{accountId}' not found"});
-        }
+            a.Id,
+            a.RuleName,
+            a.RiskScore,
+            a.RiskLevel,
+            a.CreatedAt,
+            AccountId = a.Transaction.AccountId   // 🔥 KEY CHANGE
+        })
+        .ToListAsync();
 
-        //Get alerts for that account
-        var alerts = await _context.Alerts
-            .Include(a => a.Transaction)
-            .Where(a => a.Transaction.AccountId == accountId)
-            .ToListAsync();
+    return Ok(alerts);
+}
 
-        return Ok(alerts);
-    }
-
-    // Get alerts by rule
-    [HttpGet("by-rule/{ruleName}")]
-    public async Task<IActionResult> GetAlertsByRule(string ruleName)
-    {
-        var alerts = await _context.Alerts
-            .Where(a => a.RuleName == ruleName)
-            .ToListAsync();
-
-        if(!alerts.Any())
+    // ✅ Get alerts by account
+[HttpGet("by-account/{accountId}")]
+public async Task<IActionResult> GetAlertsByAccount(string accountId)
+{
+    var alerts = await _context.Alerts
+        .Include(a => a.Transaction)
+        .Where(a => a.Transaction.AccountId == accountId)
+        .Select(a => new
         {
-            return NotFound(new {message = $"No alerts found for rule '{ruleName}'"});
-        }
+            a.Id,
+            a.RuleName,
+            a.RiskScore,
+            a.RiskLevel,
+            a.CreatedAt,
+            AccountId = a.Transaction.AccountId
+        })
+        .ToListAsync();
 
-        return Ok(alerts);
+    if (!alerts.Any())
+    {
+        return NotFound(new { message = $"No alerts found for account '{accountId}'" });
     }
+
+    return Ok(alerts);
+}
+
+    // ✅ Get alerts by rule
+[HttpGet("by-rule/{ruleName}")]
+public async Task<IActionResult> GetAlertsByRule(string ruleName)
+{
+    var alerts = await _context.Alerts
+        .Include(a => a.Transaction)
+        .Where(a => a.RuleName.Contains(ruleName))
+        .Select(a => new
+        {
+            a.Id,
+            a.RuleName,
+            a.RiskScore,
+            a.RiskLevel,
+            a.CreatedAt,
+            AccountId = a.Transaction.AccountId
+        })
+        .ToListAsync();
+
+    if (!alerts.Any())
+    {
+        return NotFound(new { message = $"No alerts found for rule '{ruleName}'" });
+    }
+
+    return Ok(alerts);
+}
 }

@@ -58,4 +58,37 @@ public class AnalyticsService
         .OrderBy(x => x.Date)
         .ToList();
 }
+//Helper Method to get the risk level for a score
+private string GetRiskLevel(int score)
+{
+    if (score >= 150) return "High";
+    if (score >= 50) return "Medium";
+    return "Low";
+}
+
+public async Task<List<HighRiskAccountDto>> GetHighRiskAccounts()
+{
+    var data = await _context.Alerts
+        .Include(a => a.Transaction)
+        .ToListAsync();
+
+    var result = data
+        .GroupBy(a => a.Transaction.AccountId)
+        .Select(g =>
+        {
+            var totalScore = g.Sum(a => a.RiskScore);
+
+            return new HighRiskAccountDto
+            {
+                AccountId = g.Key,
+                TotalAlerts = g.Count(),
+                TotalRiskScore = totalScore,
+                RiskLevel = GetRiskLevel(totalScore)
+            };
+        })
+        .OrderByDescending(x => x.TotalRiskScore)
+        .ToList();
+
+    return result;
+}
 }

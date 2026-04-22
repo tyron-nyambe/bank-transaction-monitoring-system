@@ -29,4 +29,12 @@ public class AnalyticsController : ControllerBase
         var result = await _service.GetAlertsPerDay(accountId);
         return Ok(result);
     }
+
+    [HttpGet("high-risk-accounts")]
+    public async Task<IActionResult> GetHighRiskAccounts()
+    {
+        var result = await _service.GetHighRiskAccounts();
+        return Ok(result);
+    }
+
 }

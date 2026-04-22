@@ -59,7 +59,7 @@ public class TransactionService
         {
         var alert = new Alert
         {
-            TransactionId = transaction.Id,
+            TransactionId = transaction.Id, 
             RuleName = string.Join(", ", triggeredRules),
             CreatedAt = DateTime.UtcNow,
             RiskScore = totalRiskScore,
