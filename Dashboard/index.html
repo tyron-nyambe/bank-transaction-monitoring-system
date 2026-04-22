@@ -3,29 +3,33 @@
 <head>
     <title>Fraud Monitoring Dashboard</title>
 
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         body { font-family: Arial; margin: 20px; background-color: #f9f9f9; }
         h1 { color: #333; }
 
-        .container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
+        .row {
+            display: flex;
             gap: 20px;
+            margin-bottom: 20px;
         }
 
         .card {
+            flex: 1;
             background: white;
             padding: 15px;
             border-radius: 10px;
             box-shadow: 0px 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
         }
 
         table { border-collapse: collapse; width: 100%; margin-top: 20px; }
         th, td { border: 1px solid #ddd; padding: 8px; }
         th { background-color: #f4f4f4; }
+        tr:hover {
+         background-color: #f1f1f1;
+}
 
         .high { color: red; font-weight: bold; }
         .medium { color: orange; font-weight: bold; }
@@ -39,7 +43,15 @@
 <input type="text" id="accountId" placeholder="Enter Account ID" />
 <button onclick="loadAlerts()">Search</button>
 
-<div class="container">
+<!-- KPI Cards -->
+<div class="row">
+    <div class="card"><h3>Total Alerts</h3><p id="totalAlerts">0</p></div>
+    <div class="card"><h3>High Risk Alerts</h3><p id="highRiskAlerts">0</p></div>
+    <div class="card"><h3>Accounts Flagged</h3><p id="accountsFlagged">0</p></div>
+</div>
+
+<!-- Charts -->
+<div class="row">
     <div class="card">
         <h3>Risk Distribution</h3>
         <canvas id="riskChart"></canvas>
@@ -51,8 +63,9 @@
     </div>
 </div>
 
+<!-- Alerts Table -->
 <div class="card">
-    <h3>Alerts Table</h3>
+    <h3>Alerts</h3>
     <table>
         <thead>
             <tr>
@@ -65,6 +78,22 @@
             </tr>
         </thead>
         <tbody id="alertsTable"></tbody>
+    </table>
+</div>
+
+<!-- High Risk Accounts -->
+<div class="card">
+    <h3>High Risk Accounts</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Account</th>
+                <th>Total Alerts</th>
+                <th>Total Risk Score</th>
+                <th>Risk Level</th>
+            </tr>
+        </thead>
+        <tbody id="accountsTable"></tbody>
     </table>
 </div>
 
@@ -81,12 +110,13 @@ async function loadAlerts() {
 
     try {
         const response = await fetch(url);
-        if (!response.ok) {
-            alert("Error fetching data");
-            return;
-        }
-
         const data = await response.json();
+
+        // KPIs
+        document.getElementById("totalAlerts").innerText = data.length;
+
+        const highRisk = data.filter(a => a.riskLevel === "High").length;
+        document.getElementById("highRiskAlerts").innerText = highRisk;
 
         renderTable(data);
         renderCharts(accountId);
@@ -101,73 +131,80 @@ function renderTable(data) {
     const table = document.getElementById("alertsTable");
     table.innerHTML = "";
 
-    if (data.length === 0) {
-        table.innerHTML = "<tr><td colspan='6'>No alerts found</td></tr>";
-        return;
-    }
-
     data.forEach(alert => {
-        const row = `
+        table.innerHTML += `
+        <tr>
+        <td>${alert.id}</td>
+        <td>${alert.accountId}</td>
+        <td>${alert.ruleName}</td>
+        <td>${alert.riskScore}</td>
+        <td class="${(alert.riskLevel || '').toLowerCase()}">${alert.riskLevel}</td>
+        <td>${new Date(alert.createdAt).toLocaleString()}</td>
+    </tr>
+        `;
+    });
+}
+
+async function loadHighRiskAccounts() {
+    const response = await fetch("http://localhost:5245/api/analytics/high-risk-accounts");
+    const data = await response.json();
+
+    document.getElementById("accountsFlagged").innerText = data.length;
+
+    const table = document.getElementById("accountsTable");
+    table.innerHTML = "";
+
+    data.forEach(acc => {
+        table.innerHTML += `
             <tr>
-                <td>${alert.id}</td>
-                <td>${alert.transaction?.accountId ?? "N/A"}</td>
-                <td>${alert.ruleName}</td>
-                <td>${alert.riskScore}</td>
-                <td class="${(alert.riskLevel || '').toLowerCase()}">${alert.riskLevel}</td>
-                <td>${new Date(alert.createdAt).toLocaleString()}</td>
+                <td>${acc.accountId}</td>
+                <td>${acc.totalAlerts}</td>
+                <td>${acc.totalRiskScore}</td>
+                <td class="${acc.riskLevel.toLowerCase()}">${acc.riskLevel}</td>
             </tr>
         `;
-        table.innerHTML += row;
     });
 }
 
 async function renderCharts(accountId) {
 
-    // 🔵 Risk Distribution
     let riskUrl = `http://localhost:5245/api/analytics/risk-distribution`;
     if (accountId) riskUrl += `?accountId=${accountId}`;
 
-    const riskResponse = await fetch(riskUrl);
-    const riskDataApi = await riskResponse.json();
-
-    const labels = riskDataApi.map(x => x.riskLevel);
-    const counts = riskDataApi.map(x => x.count);
+    const riskData = await (await fetch(riskUrl)).json();
 
     if (riskChart) riskChart.destroy();
     riskChart = new Chart(document.getElementById("riskChart"), {
         type: "pie",
         data: {
-            labels: labels,
-            datasets: [{ data: counts }]
+            labels: riskData.map(x => x.riskLevel),
+            datasets: [{ data: riskData.map(x => x.count) }]
         }
     });
 
-    // 📈 Alerts per day
     let timeUrl = `http://localhost:5245/api/analytics/alerts-per-day`;
     if (accountId) timeUrl += `?accountId=${accountId}`;
 
-    const timeResponse = await fetch(timeUrl);
-    const timeDataApi = await timeResponse.json();
-
-    const dates = timeDataApi.map(x => x.date);
-    const counts2 = timeDataApi.map(x => x.count);
+    const timeData = await (await fetch(timeUrl)).json();
 
     if (timeChart) timeChart.destroy();
     timeChart = new Chart(document.getElementById("timeChart"), {
         type: "line",
         data: {
-            labels: dates,
+            labels: timeData.map(x => x.date),
             datasets: [{
                 label: "Alerts",
-                data: counts2,
-                fill: false
+                data: timeData.map(x => x.count)
             }]
         }
     });
 }
 
-// Load on start
+// Load initial
 loadAlerts();
+loadHighRiskAccounts();
+//Auto refresh
+setInterval(loadAlerts, 15000);
 </script>
 
 </body>
