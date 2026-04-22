@@ -1,3 +1,5 @@
+![Dashboard](Dashboard/dashboard.png)
+
 # 🚨 Fraud Monitoring & Risk Analytics System (.NET)
 
 A real-time fraud detection and transaction monitoring system built with **ASP.NET Core Web API, Entity Framework Core, and a JavaScript analytics dashboard**.
